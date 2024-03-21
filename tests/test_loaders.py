@@ -6,7 +6,7 @@ from mmhb.utils import Config
 
 @pytest.fixture(scope="module")
 def config():
-    return Config("config/config.yml").read()
+    return Config("config/config_dev.yml").read()
 
 
 def test_base(config):

@@ -424,11 +424,12 @@ def encode_patches(
 
 
 if __name__ == "__main__":
-    # data = TCGADataset(config="config/config.yml", dataset="brca")
+    # data = TCGADataset(config="config/config_dev.yml", dataset="brca")
     #
     # tensors = data[0]
     # for tensor in tensors:
     #     print(tensor.shape)
-    config = Config("config/config.yml").read()
+
+    config = Config("config/config_dev.yml").read()
     # print(config.to_dict())
     data = TCGASurvivalDataset(**config.to_dict(), dataset="brca", expand=True)

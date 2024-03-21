@@ -33,6 +33,8 @@ class CustomYamlLoader(yaml.FullLoader):
 
 
 CustomYamlLoader.add_constructor("!include", CustomYamlLoader.include)
+
+
 class Config:
     def __init__(self, config_path: str):
         self._config_path = config_path
@@ -47,6 +49,7 @@ class Config:
             return config
         else:
             raise FileNotFoundError(self._config_path)
+
 
 def _read(filename: str, loader) -> Box:
     """Read any yaml file as a Box object"""
@@ -63,7 +66,7 @@ def _read(filename: str, loader) -> Box:
 
 
 def _overwrite_with_user_specific_file(config: Box, filename: str) -> Box:
-    """Overwrite the config files with user specific files """
+    """Overwrite the config files with user specific files"""
     user_filename = _user_specific_file(filename)
     if user_filename:
         print(f"{filename} overwritten by {user_filename}")
@@ -72,9 +75,10 @@ def _overwrite_with_user_specific_file(config: Box, filename: str) -> Box:
 
     return config
 
+
 def _user_specific_file(filename: str) -> Union[None, str]:
     """Find user specific files for a filename.
-    E.g. user_specific_file(config.yml) = config.$USER.yml if the file
+    E.g. user_specific_file(config_dev.yml) = config.$USER.yml if the file
     exists, else returns None
     """
     username = getpass.getuser().lower().replace(" ", "_")
