@@ -50,8 +50,21 @@ class TCGADataset(MMDataset):
         self.omic_df = self.load_omic(target_site=conditional_target)
         self.slide_ids = self.omic_df["slide_id"].str.strip(".svs")
         self.omic_df = self.omic_df.drop(
-            ["site", "oncotree_code", "case_id", "slide_id", "train"], axis=1
-        )
+            [
+                "site",
+                "oncotree_code",
+                "case_id",
+                "slide_id",
+                "train",
+                "Redaction",
+                "stage",
+                "stage.1",
+                "sample",
+            ],
+            axis=1,
+            errors="ignore",
+        )  # ignore errors in case column is missing
+
         self.omic_tensor = torch.Tensor(self.omic_df.values).squeeze()
 
         # required for shape() function
@@ -127,12 +140,17 @@ class TCGADataset(MMDataset):
         if target_site is not None:
             df = self.load_conditional_omic(target_site)
         else:
+            # load_path = self.data_path.joinpath(
+            #     f"tcga/omic/tcga_{self.dataset}_all_clean.csv.zip"
+            # )
+            # df = pd.read_csv(
+            #     load_path, compression="zip", header=0, index_col=0, low_memory=False
+            # )
+
             load_path = self.data_path.joinpath(
-                f"tcga/omic/tcga_{self.dataset}_all_clean.csv.zip"
+                f"tcga/omic_xena/{self.dataset}_master.csv"
             )
-            df = pd.read_csv(
-                load_path, compression="zip", header=0, index_col=0, low_memory=False
-            )
+            df = pd.read_csv(load_path, low_memory=False, index_col="_PATIENT")
             # handle missing
             num_nans = df.isna().sum().sum()
             nan_counts = df.isna().sum()[df.isna().sum() > 0]
@@ -262,6 +280,7 @@ class TCGASurvivalDataset(TCGADataset):
         patch_wsi: bool = True,
         n_bins: int = 4,
         conditional_target: str = None,
+        survival_type: str = "os",
         **kwargs,
     ):
         super().__init__(
@@ -278,16 +297,22 @@ class TCGASurvivalDataset(TCGADataset):
         )
         self.n_bins = n_bins
 
+        assert survival_type in ["os", "dss"], "Invalid survival type"
+        self.survival_type = survival_type
+        logger.info(f"Survival type: {self.survival_type.upper()}")
+        self.censorship_col = "OS" if self.survival_type == "os" else "DSS"
+        self.survival_col = "OS.time" if self.survival_type == "os" else "DSS.time"
+
         # calculate survival
         self.omic_df = self._calc_survival()
-        # drop vars to avoid leakage
+        # drop vars to avoid leakaged
         self.features = self.omic_df.drop(
-            ["censorship", "survival_months", "y_disc"], axis=1
+            [self.censorship_col, self.survival_col, "y_disc"], axis=1
         )
         self.omic_tensor = torch.Tensor(self.features.values).squeeze()
 
-        self.censorship = self.omic_df["censorship"]
-        self.event_time = self.omic_df["survival_months"]
+        self.censorship = self.omic_df[self.censorship_col]
+        self.event_time = self.omic_df[self.survival_col]
         self.targets = torch.Tensor(
             self.omic_df["y_disc"].values
         ).long()  # cast as int64 since sksurv requires this for c-index
@@ -301,11 +326,23 @@ class TCGASurvivalDataset(TCGADataset):
         return tensors, self.censorship[idx], self.event_time[idx], self.targets[idx]
 
     def _calc_survival(self, eps: float = 1e-6):
-        survival = "survival_months"
         df = self.omic_df
+        if self.survival_type == "os":
+            survival = "OS.time"
+            censorship = "OS"
+            df = df.drop(
+                ["DSS.time", "DSS", "DFI.time", "DFI", "PFI.time", "PFI"], axis=1
+            )
+        else:
+            survival = "DSS.time"
+            censorship = "DSS"
+            df = df.drop(
+                ["OS.time", "OS", "DFI.time", "DFI", "PFI.time", "PFI"], axis=1
+            )
+            # drop columns
 
         # take q_bins from uncensored patients
-        subset_df = df[df["censorship"] == 0]
+        subset_df = df[df[censorship] == 0]
         disc_labels, q_bins = pd.qcut(
             subset_df[survival], q=self.n_bins, retbins=True, labels=False
         )
