@@ -59,6 +59,8 @@ class TCGADataset(MMDataset):
                 "Redaction",
                 "stage",
                 "stage.1",
+                "stage.2",
+                "stage.3",
                 "sample",
             ],
             axis=1,
@@ -151,6 +153,7 @@ class TCGADataset(MMDataset):
                 f"tcga/omic_xena/{self.dataset}_master.csv"
             )
             df = pd.read_csv(load_path, low_memory=False, index_col="_PATIENT")
+
             # handle missing
             num_nans = df.isna().sum().sum()
             nan_counts = df.isna().sum()[df.isna().sum() > 0]
@@ -331,13 +334,17 @@ class TCGASurvivalDataset(TCGADataset):
             survival = "OS.time"
             censorship = "OS"
             df = df.drop(
-                ["DSS.time", "DSS", "DFI.time", "DFI", "PFI.time", "PFI"], axis=1
+                ["DSS.time", "DSS", "DFI.time", "DFI", "PFI.time", "PFI"],
+                axis=1,
+                errors="ignore",
             )
         else:
             survival = "DSS.time"
             censorship = "DSS"
             df = df.drop(
-                ["OS.time", "OS", "DFI.time", "DFI", "PFI.time", "PFI"], axis=1
+                ["OS.time", "OS", "DFI.time", "DFI", "PFI.time", "PFI"],
+                axis=1,
+                errors="ignore",
             )
             # drop columns
 
