@@ -100,6 +100,20 @@ Collection of 14 sites from The Cancer Genome Atlas containing data on:
 
 The modalities are consistent across TCGA cohorts. 
 
+##### Download
+
+```bash
+invoke download --dataset tcga --sites ["brca", "luad"]
+```
+
+To preprocess the WSIs from TCGA, you can optionally run (example)
+
+```bash
+invoke preprocess --site kirp --level 2 --path /auto/archive/tcga/tcga/wsi --step patch
+invoke preprocess --site kirp --level 2 --path /auto/archive/tcga/tcga/wsi --step features
+```
+
+
 Example use:
 ```python
 from mmhb.loader import *

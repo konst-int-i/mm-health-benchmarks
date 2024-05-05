@@ -206,6 +206,7 @@ def preprocess(
     level: int = 3,
     patch_size: int = 256,
     pretraining: str = "kather",
+    check_valid_ids: bool = False,  # rechecks even if valid_id file already exists
 ):
     wsi_path = Path(path)
     assert os.path.exists(wsi_path), "`wsi_dir` not found"
@@ -220,8 +221,9 @@ def preprocess(
     assert step in valid_steps, f"Invalid step parameter, must be one of {valid_steps}"
 
     # check which WSIs are available at specified level
-    if not os.path.exists(prep_path.joinpath("valid_prep_ids.csv")):
+    if not os.path.exists(prep_path.joinpath("valid_prep_ids.csv")) or check_valid_ids:
         # check which slides have specified level available (only pass those to preprocessing)
+        print(f"Checking available slides at level {level}...")
         valid_ids = []
         for slide_id in os.listdir(site_path):
             # check whether specified level is available in slide
@@ -233,9 +235,9 @@ def preprocess(
                 print(f"Level {level} not available for slide {slide_id}")
                 continue
 
-        # write temp csv file with valid slide ids to pass to CLAM
-        valid_slide_df = pd.DataFrame({"slide_id": valid_ids})
-        valid_slide_df.to_csv(prep_path.joinpath("valid_prep_ids.csv"), index=False)
+            # write temp csv file with valid slide ids to pass to CLAM
+            valid_slide_df = pd.DataFrame({"slide_id": valid_ids})
+            valid_slide_df.to_csv(prep_path.joinpath("valid_prep_ids.csv"), index=False)
 
     if step == "patch":
         # generate patches of specified size at given magnification level (3 being lowest magnification)

@@ -29,6 +29,7 @@ class TCGADataset(MMDataset):
         level: int = 2,
         filter_overlap: bool = True,
         patch_wsi: bool = True,
+        staging: bool = False,
         concat: bool = False,
         conditional_target: str = None,
         **kwargs,
@@ -44,6 +45,7 @@ class TCGADataset(MMDataset):
         self.patch_wsi = patch_wsi
         self.encoder = encoder
         self.concat = concat  # whether to flatten tensor for early fusion
+        self.staging = staging
 
         self._check_args()
         # pre-fetch data
@@ -154,6 +156,10 @@ class TCGADataset(MMDataset):
             )
             df = pd.read_csv(load_path, low_memory=False, index_col="_PATIENT")
 
+            if self.staging:
+                # one-hot encode stage
+                df = pd.get_dummies(df, columns=["stage"], dummy_na=False, dtype=int)
+
             # handle missing
             num_nans = df.isna().sum().sum()
             nan_counts = df.isna().sum()[df.isna().sum() > 0]
@@ -240,24 +246,29 @@ class TCGADataset(MMDataset):
         # slides_available = self.slide_ids
         slides_available = [
             slide_id.rsplit(".", 1)[0]
-            for slide_id in os.listdir(self.prep_path.joinpath("patches"))
+            for slide_id in os.listdir(
+                self.prep_path.joinpath(
+                    "patch_features_kather"
+                    if self.encoder == "kather"
+                    else "patch_features"
+                )
+            )
         ]
         omic_available = [id[:-4] for id in df["slide_id"]]
         overlap = set(slides_available) & set(omic_available)
         logger.info(f"Slides available: {len(slides_available)}")
         logger.info(f"Omic available: {len(omic_available)}")
         logger.info(f"Overlap: {len(overlap)}")
-        if len(slides_available) < len(omic_available):
+        if set(slides_available) != set(omic_available):
             logger.debug(
                 f"Filtering out {len(omic_available) - len(slides_available)} samples for which there is no omic data available"
             )
             overlap_filter = [id + ".svs" for id in overlap]
             df = df[df["slide_id"].isin(overlap_filter)]
-        elif len(slides_available) > len(omic_available):
             logger.debug(
                 f"Filtering out {len(slides_available) - len(omic_available)} samples for which there are no slides available"
             )
-            # self.slide_ids = overlap
+            self.slide_ids = overlap
         else:
             logger.info("100% modality overlap, no samples filtered out")
 
@@ -312,6 +323,7 @@ class TCGASurvivalDataset(TCGADataset):
         self.features = self.omic_df.drop(
             [self.censorship_col, self.survival_col, "y_disc"], axis=1
         )
+        logger.info(f"Omic features: {self.features.shape}")
         self.omic_tensor = torch.Tensor(self.features.values).squeeze()
 
         self.censorship = self.omic_df[self.censorship_col]
