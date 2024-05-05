@@ -144,13 +144,6 @@ class TCGADataset(MMDataset):
         if target_site is not None:
             df = self.load_conditional_omic(target_site)
         else:
-            # load_path = self.data_path.joinpath(
-            #     f"tcga/omic/tcga_{self.dataset}_all_clean.csv.zip"
-            # )
-            # df = pd.read_csv(
-            #     load_path, compression="zip", header=0, index_col=0, low_memory=False
-            # )
-
             load_path = self.data_path.joinpath(
                 f"tcga/omic_xena/{self.dataset}_master.csv"
             )
