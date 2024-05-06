@@ -30,6 +30,7 @@ class TCGADataset(MMDataset):
         filter_overlap: bool = True,
         patch_wsi: bool = True,
         staging: bool = False,
+        ref_features: bool = True,
         concat: bool = False,
         conditional_target: str = None,
         **kwargs,
@@ -44,6 +45,7 @@ class TCGADataset(MMDataset):
         self.filter_overlap = filter_overlap
         self.patch_wsi = patch_wsi
         self.encoder = encoder
+        self.ref_features = ref_features
         self.concat = concat  # whether to flatten tensor for early fusion
         self.staging = staging
 
@@ -144,12 +146,18 @@ class TCGADataset(MMDataset):
         if target_site is not None:
             df = self.load_conditional_omic(target_site)
         else:
+            subdir = "ref" if self.ref_features else "custom"
+            logger.info(f"Using {subdir} omic features")
             load_path = self.data_path.joinpath(
-                f"tcga/omic_xena/{self.dataset}_master.csv"
+                f"tcga/omic_xena/{subdir}/{self.dataset}_master.csv"
             )
             df = pd.read_csv(load_path, low_memory=False, index_col="_PATIENT")
 
             if self.staging:
+                # filter sub-staging
+                df["stage"] = df["stage"].replace(
+                    to_replace=r"(Stage [I]{1,3}V?).*", value=r"\1", regex=True
+                )
                 # one-hot encode stage
                 df = pd.get_dummies(df, columns=["stage"], dummy_na=False, dtype=int)
 
