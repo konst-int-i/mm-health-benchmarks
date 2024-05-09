@@ -91,8 +91,6 @@ class MimicDataset(MMDataset):
         if "ts" in self.modalities:
             tensors.append(self.X_s[idx])
 
-        if self.concat:
-            pass  # TODO
         return tensors, self.targets[idx]
 
 
