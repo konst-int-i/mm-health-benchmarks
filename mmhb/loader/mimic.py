@@ -83,13 +83,13 @@ class MimicDataset(MMDataset):
     def __getitem__(self, idx):
         tensors = []
         if "tab" in self.modalities:
-            tensor = self.X_t[idx]
+            tensor = self.X_s[idx]
             if self.expand:
                 tensor = tensor.unsqueeze(0)
             tensors.append(tensor)
 
         if "ts" in self.modalities:
-            tensors.append(self.X_s[idx])
+            tensors.append(self.X_t[idx])
 
         return tensors, self.targets[idx]
 
@@ -97,6 +97,6 @@ class MimicDataset(MMDataset):
 if __name__ == "__main__":
     config = Config("../mm-lego/config/config_dev.yml").read()
     mimic = MimicDataset(**config.data.mimic.to_dict())
-    print(mimic[0])
-    print(mimic.targets)
+    tensors, target = mimic[0]
+    [print(t.shape) for t in tensors]
     print(mimic.targets.unique())
