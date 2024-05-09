@@ -127,7 +127,7 @@ data = TCGADataset(
     **config.to_dict(),
     dataset="brca", 
     expand_dims=False, 
-    modalities=["omic", "slides"], 
+    modalities=["tab", "img"], 
 )
 # access sample
 omic_tensor, slide_tensor = data[0] 
@@ -137,7 +137,7 @@ omic_tensor, slide_tensor = data[0]
 data = TCGASurvivalDataset(
     **config.to_dict(),
     dataset="brca", 
-    modalities=["omic", "slides"],
+    modalities=["tab", "img"],
 )
 
 (omic_tensor, slide_tensor), censorship, event_time, target = data[0]

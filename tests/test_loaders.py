@@ -36,9 +36,7 @@ def test_sample_dataset(config):
 
 
 def test_tcga(config):
-    data = TCGADataset(
-        dataset="brca", modalities=["omic", "slides"], **config.to_dict()
-    )
+    data = TCGADataset(dataset="brca", modalities=["tab", "img"], **config.to_dict())
     assert len(data) == 1019
     tensors = data[0]
     assert len(tensors) == 2
@@ -51,15 +49,15 @@ def test_tcga_conditional(config):
 
     # load standard brca
     brca = TCGASurvivalDataset(
-        dataset="brca", modalities=["omic", "slides"], **config.to_dict()
+        dataset="brca", modalities=["tab", "img"], **config.to_dict()
     )
     kirp = TCGASurvivalDataset(
-        dataset="kirp", modalities=["omic", "slides"], **config.to_dict()
+        dataset="kirp", modalities=["tab", "img"], **config.to_dict()
     )
 
     conditional = TCGASurvivalDataset(
         dataset="brca",
-        modalities=["omic", "slides"],
+        modalities=["tab", "img"],
         conditional_target="kirp",
         **config.to_dict(),
     )
@@ -79,7 +77,7 @@ def test_tcga_survival(config):
         **config.to_dict(),
         dataset="brca",
         expand=False,
-        modalities=["omic", "slides"],
+        modalities=["tab", "img"],
     )
     assert data.num_modalities == 2
     assert len(data) == 1019
@@ -91,7 +89,7 @@ def test_tcga_survival(config):
 
     # TEST CASE - expand=True
     data = TCGASurvivalDataset(
-        **config.to_dict(), dataset="brca", modalities=["omic"], expand=True
+        **config.to_dict(), dataset="brca", modalities=["tab"], expand=True
     )
     tensors, censorship, event_time, target = data[0]
     assert tensors[0].shape == torch.Size([1, n_feats])
@@ -100,7 +98,7 @@ def test_tcga_survival(config):
     data = TCGASurvivalDataset(
         **config.to_dict(),
         dataset="brca",
-        modalities=["omic", "slides"],
+        modalities=["tab", "img"],
         expand=False,
         concat=True,
     )

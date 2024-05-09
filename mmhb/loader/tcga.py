@@ -23,7 +23,7 @@ class TCGADataset(MMDataset):
         self,
         data_path: Union[str, Path],
         dataset: str,
-        modalities: List = ["omic", "slides"],
+        modalities: List = ["tab", "img"],
         expand: bool = False,
         encoder: str = "kather",
         level: int = 2,
@@ -79,9 +79,9 @@ class TCGADataset(MMDataset):
     def _check_args(self):
         assert len(self.modalities) > 0, "No sources specified"
 
-        valid_sources = ["omic", "slides"]
+        valid_mods = ["tab", "img"]
         assert all(
-            source in valid_sources for source in self.modalities
+            source in valid_mods for source in self.modalities
         ), "Invalid source specified"
 
         valid_encoders = ["kather", "imagenet"]
@@ -105,12 +105,12 @@ class TCGADataset(MMDataset):
 
     def __getitem__(self, idx: int) -> Tuple:
         tensors = []
-        if "omic" in self.modalities:
+        if "tab" in self.modalities:
             tensor = self.omic_tensor[idx]
             if self.expand:
                 tensor = tensor.unsqueeze(0)
             tensors.append(tensor)
-        if "slides" in self.modalities:
+        if "img" in self.modalities:
             if self.patch_wsi:
                 tensor = self.load_patches(slide_id=self.slide_ids[idx])
                 tensors.append(tensor)
@@ -288,7 +288,7 @@ class TCGASurvivalDataset(TCGADataset):
         data_path: Union[str, Path],
         dataset: str,
         expand: bool = False,
-        modalities: List = ["omic", "slides"],
+        modalities: List = ["tab", "img"],
         level: int = 2,
         encoder: str = "kather",
         filter_overlap: bool = True,
