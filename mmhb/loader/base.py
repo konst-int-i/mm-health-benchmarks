@@ -38,7 +38,7 @@ class MMDataset(Dataset):
         self.expand = expand
         self.data_path = Path(data_path)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        logger.debug(f"Using device: {self.device}")
+        logger.info(f"Using device: {self.device}")
         self.modalities = modalities
         self.tensors = None
         self.targets = None

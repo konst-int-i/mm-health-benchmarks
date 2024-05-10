@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import List
 import pickle
 import numpy as np
+import pandas as pd
 import torch
 from typing import Union
 
@@ -20,11 +21,14 @@ class MimicDataset(MMDataset):
         modalities: List = ["tab", "ts"],
         concat: bool = False,
         task: int = 0,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(
             data_path=data_path, expand=expand, modalities=modalities, **kwargs
         )
+
+        task = int(task)
+        assert task in range(-1, 19), f"Invalid task index: {task}"
         self.concat = concat
         self.expand = expand
         f = open(data_path, "rb")
@@ -77,6 +81,7 @@ class MimicDataset(MMDataset):
             le = len(y)
 
         self.targets = torch.Tensor(y).long()
+        self.y = pd.Series(y)
         self.X_t = torch.Tensor(X_t)
         self.X_s = torch.Tensor(X_s)
 
@@ -93,6 +98,9 @@ class MimicDataset(MMDataset):
 
         return tensors, self.targets[idx]
 
+    def __len__(self):
+        return len(self.targets)
+
 
 if __name__ == "__main__":
     config = Config("../mm-lego/config/config_dev.yml").read()
@@ -100,3 +108,6 @@ if __name__ == "__main__":
     tensors, target = mimic[0]
     [print(t.shape) for t in tensors]
     print(mimic.targets.unique())
+    print(mimic.targets.bincount())
+    print(len(mimic))
+    print(mimic.device)
