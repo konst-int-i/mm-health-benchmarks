@@ -33,6 +33,7 @@ class TCGADataset(MMDataset):
         ref_features: bool = True,
         concat: bool = False,
         conditional_target: str = None,
+        xena: bool = False,
         **kwargs,
     ):
         super().__init__(data_path, expand, modalities, **kwargs)
@@ -48,6 +49,7 @@ class TCGADataset(MMDataset):
         self.ref_features = ref_features
         self.concat = concat  # whether to flatten tensor for early fusion
         self.staging = staging
+        self.xena = xena
 
         self._check_args()
         # pre-fetch data
@@ -146,20 +148,36 @@ class TCGADataset(MMDataset):
         if target_site is not None:
             df = self.load_conditional_omic(target_site)
         else:
-            subdir = "ref" if self.ref_features else "custom"
-            logger.info(f"Using {subdir} omic features")
-            load_path = self.data_path.joinpath(
-                f"tcga/omic_xena/{subdir}/{self.dataset}_master.csv"
-            )
-            df = pd.read_csv(load_path, low_memory=False, index_col="_PATIENT")
+            if self.xena:
+                subdir = "ref" if self.ref_features else "custom"
+                logger.info(f"Using {subdir} omic features")
+                load_path = self.data_path.joinpath(
+                    f"tcga/omic_xena/{subdir}/{self.dataset}_master.csv"
+                )
+                df = pd.read_csv(load_path, low_memory=False, index_col="_PATIENT")
+            else:
+                load_path = self.data_path.joinpath(
+                    f"tcga/omic/tcga_{self.dataset}_all_clean.csv.zip"
+                )
+                df = pd.read_csv(
+                    load_path,
+                    compression="zip",
+                    header=0,
+                    index_col=0,
+                    low_memory=False,
+                )
 
             if self.staging:
-                # filter sub-staging
-                df["stage"] = df["stage"].replace(
-                    to_replace=r"(Stage [I]{1,3}V?).*", value=r"\1", regex=True
-                )
-                # one-hot encode stage
-                df = pd.get_dummies(df, columns=["stage"], dummy_na=False, dtype=int)
+                # only when xena data is used
+                if "stage" in df.columns:
+                    # filter sub-staging
+                    df["stage"] = df["stage"].replace(
+                        to_replace=r"(Stage [I]{1,3}V?).*", value=r"\1", regex=True
+                    )
+                    # one-hot encode stage
+                    df = pd.get_dummies(
+                        df, columns=["stage"], dummy_na=False, dtype=int
+                    )
 
             # handle missing
             num_nans = df.isna().sum().sum()
@@ -315,12 +333,16 @@ class TCGASurvivalDataset(TCGADataset):
         assert survival_type in ["os", "dss"], "Invalid survival type"
         self.survival_type = survival_type
         logger.info(f"Survival type: {self.survival_type.upper()}")
-        self.censorship_col = "OS" if self.survival_type == "os" else "DSS"
-        self.survival_col = "OS.time" if self.survival_type == "os" else "DSS.time"
+        if self.xena:
+            self.censorship_col = "OS" if self.survival_type == "os" else "DSS"
+            self.survival_col = "OS.time" if self.survival_type == "os" else "DSS.time"
+        else:
+            self.censorship_col = "censorship"
+            self.survival_col = "survival_months"
 
         # calculate survival
         self.omic_df = self._calc_survival()
-        # drop vars to avoid leakaged
+        # drop vars to avoid leakage
         self.features = self.omic_df.drop(
             [self.censorship_col, self.survival_col, "y_disc"], axis=1
         )
@@ -343,33 +365,35 @@ class TCGASurvivalDataset(TCGADataset):
 
     def _calc_survival(self, eps: float = 1e-6):
         df = self.omic_df
-        if self.survival_type == "os":
-            survival = "OS.time"
-            censorship = "OS"
-            df = df.drop(
-                ["DSS.time", "DSS", "DFI.time", "DFI", "PFI.time", "PFI"],
-                axis=1,
-                errors="ignore",
-            )
-        else:
-            survival = "DSS.time"
-            censorship = "DSS"
-            df = df.drop(
-                ["OS.time", "OS", "DFI.time", "DFI", "PFI.time", "PFI"],
-                axis=1,
-                errors="ignore",
-            )
-            # drop columns
+        drop_cols = [
+            "DSS.time",
+            "DSS",
+            "DFI.time",
+            "DFI",
+            "PFI.time",
+            "PFI",
+            "OS",
+            "OS.time",
+        ]
+        if self.survival_type == "dss":
+            # remove from drop_cols
+            drop_cols.remove("DSS.time")
+            drop_cols.remove("DSS")
+        elif self.survival_type == "os":
+            # remove from drop_cols
+            drop_cols.remove("OS.time")
+            drop_cols.remove("OS")
+        df = df.drop(drop_cols, axis=1, errors="ignore")
 
         # take q_bins from uncensored patients
-        subset_df = df[df[censorship] == 0]
+        subset_df = df[df[self.censorship_col] == 0]
         disc_labels, q_bins = pd.qcut(
-            subset_df[survival], q=self.n_bins, retbins=True, labels=False
+            subset_df[self.survival_col], q=self.n_bins, retbins=True, labels=False
         )
-        q_bins[-1] = df[survival].max() + eps
-        q_bins[0] = df[survival].min() - eps
+        q_bins[-1] = df[self.survival_col].max() + eps
+        q_bins[0] = df[self.survival_col].min() - eps
         df["y_disc"] = pd.cut(
-            df[survival],
+            df[self.survival_col],
             bins=q_bins,
             retbins=False,
             labels=False,
