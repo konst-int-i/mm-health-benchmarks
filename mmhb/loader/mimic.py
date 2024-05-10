@@ -20,15 +20,21 @@ class MimicDataset(MMDataset):
         expand: bool = False,
         modalities: List = ["tab", "ts"],
         concat: bool = False,
-        task: int = 0,
+        dataset: str = "icd9",
+        icd_task: int = 1,
         **kwargs,
     ):
         super().__init__(
             data_path=data_path, expand=expand, modalities=modalities, **kwargs
         )
+        valid_datasets = ["icd9", "mortality"]
+        assert (
+            dataset in valid_datasets
+        ), f"Invalid dataset: {dataset}, must be one of {valid_datasets}"
+        task = icd_task if dataset == "icd9" else -1
 
-        task = int(task)
-        assert task in range(-1, 19), f"Invalid task index: {task}"
+        # task = int(task)
+        # assert task in range(-1, 19), f"Invalid task index: {task}"
         self.concat = concat
         self.expand = expand
         f = open(data_path, "rb")
