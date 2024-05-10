@@ -99,7 +99,7 @@ class MimicDataset(MMDataset):
                 tensor = tensor.unsqueeze(0)
             tensors.append(tensor)
 
-        if "img" in self.modalities:
+        if "ts" in self.modalities:
             tensors.append(self.X_t[idx])
 
         return tensors, self.targets[idx]
