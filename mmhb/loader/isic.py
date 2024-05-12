@@ -6,6 +6,63 @@ from PIL import Image
 from pathlib import Path
 import pandas as pd
 import os
+from typing import List, Union
+from mmhb.loader import MMDataset
+
+
+class ISICDataset(MMDataset):
+    def __init__(
+        self,
+        data_path: Union[str, Path],
+        expand: bool = False,
+        modalities: List = ["tab", "img"],
+        concat: bool = False,
+        dataset: str = "isic",
+        **kwargs,
+    ):
+        super().__init__(
+            data_path=data_path, expand=expand, modalities=modalities, **kwargs
+        )
+
+        self.concat = concat
+        self.dataset = dataset
+
+        self.df = pd.read_csv(data_path.joinpath("train.csv"), index_col="patient_id")
+        self.img_index = self.df["image_name"]
+        self.img_path = self.data_path.joinpath("img_prep")
+        self.targets = torch.Tensor(self.df["target"].values).int()
+        # self.targets = torch.Tensor(self.df.loc[:, "target"])
+        one_hot_cols = [
+            "sex",
+            "anatom_site_general_challenge",
+            "diagnosis",
+            "benign_malignant",
+        ]
+        # one-hot encode
+        self.df = pd.get_dummies(self.df, columns=one_hot_cols, dtype="int")
+        self.df = self.df.drop(columns=["image_name", "target"])
+
+        self.X_tab = torch.Tensor(self.df.values)
+
+    def __len__(self):
+        return len(self.df)
+
+    def _get_img(self, idx):
+        # load_path = self.
+        load_path = self.img_path.joinpath(f"{self.img_index.iloc[idx]}.pt")
+        return torch.load(load_path)
+
+    def __getitem__(self, idx):
+        tensors = []
+        if "tab" in self.modalities:
+            tensor = self.X_tab[idx]
+            if self.expand:
+                tensor = tensor.unsqueeze(0)
+            tensors.append(tensor)
+        if "img" in self.modalities:
+            tensors.append(self._get_img(idx))
+
+        return tensors, self.targets[idx]
 
 
 def preprocess_isic(n: int = None):
@@ -97,27 +154,13 @@ def _path_img(args) -> torch.Tensor:
 
 
 if __name__ == "__main__":
-    preprocess_isic()
-    # isic_path = Path("/auto/archive/tcga/other_data/ISIC/")
-    # df = pd.read_csv(isic_path.joinpath("train.csv"), index_col="patient_id")
-    # img_index = df["image_name"]
-    # raw_path = isic_path.joinpath("jpeg/train/")
-    # # filename = f"{img_index.iloc[0]}.jpg"
-    # filenames = (img_index.iloc[:16] + ".jpg").values
+    isic = ISICDataset(
+        # data_path = Path("/auto/archive/tcga/other_data/ISIC/"),
+        data_path=Path("../mm-lego/data/isic/"),
+        expand=True,
+    )
+    (tab, img), target = isic[0]
+    print(tab.shape, img.shape)
 
-    # map multiprocessing
-    # map multiprocessing
-    # with multiprocessing.Pool() as pool:
-    #     pool.map(_path_img, [(raw_path, filename) for filename in filenames])
-    # with multiprocessing.Pool() as pool:
-    #     pool.map(patch_img, [raw_path] * len(filenames), filenames)
-
-    # print(len(filenames))
-    # patch_img(raw_path, filename, patch_dims=3)
-    # img_path = isic_path.joinpath("jpeg/train").joinpath(f"{img_index.iloc[0]}.jpg")
-
-    # Load an image
-    # img_path = Path("data/ISIC_0000000.jpg")
-    # encoded_patches = preprocess(img_path)
-    # print(encoded_patches.shape)
-    # print(encoded_patches)
+    # Preprocessing (only do once)
+    # preprocess_isic()
