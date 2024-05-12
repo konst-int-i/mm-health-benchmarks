@@ -1,7 +1,7 @@
 """
 MIMIC dataloader adapted for MMHB base classes
 """
-
+import einops
 from mmhb.loader import MMDataset
 from mmhb.utils import Config
 from pathlib import Path
