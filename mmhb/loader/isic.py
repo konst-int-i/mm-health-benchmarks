@@ -27,10 +27,19 @@ class ISICDataset(MMDataset):
         self.concat = concat
         self.dataset = dataset
 
-        self.df = pd.read_csv(data_path.joinpath("train.csv"), index_col="patient_id")
+        self.df = pd.read_csv(
+            self.data_path.joinpath("train.csv"), index_col="patient_id"
+        )
+        n_positives = self.df["target"].sum()
+        positives = self.df[self.df["target"] == 1]
+        # sample n_positives negatives
+        negatives = self.df[self.df["target"] == 0].sample(n=2 * n_positives)
+        self.df = pd.concat([positives, negatives]).sample(frac=1)
+
         self.img_index = self.df["image_name"]
         self.img_path = self.data_path.joinpath("img_prep")
-        self.targets = torch.Tensor(self.df["target"].values).int()
+        self.y = self.df["target"]
+        self.targets = torch.Tensor(self.df["target"].values).long()
         # self.targets = torch.Tensor(self.df.loc[:, "target"])
         one_hot_cols = [
             "sex",
@@ -50,7 +59,9 @@ class ISICDataset(MMDataset):
     def _get_img(self, idx):
         # load_path = self.
         load_path = self.img_path.joinpath(f"{self.img_index.iloc[idx]}.pt")
-        return torch.load(load_path)
+        with open(load_path, "rb") as f:
+            return torch.load(f, weights_only=True, map_location=torch.device("cpu"))
+        # return torch.load(load_path)
 
     def __getitem__(self, idx):
         tensors = []
@@ -75,7 +86,7 @@ def preprocess_isic(n: int = None):
     else:
         filenames = (img_index.iloc[:16] + ".jpg").values
 
-    with multiprocessing.Pool() as pool:
+    with multiprocessing.Pool(processes=6) as pool:
         pool.map(_path_img, [(raw_path, filename) for filename in filenames])
 
 
@@ -154,13 +165,13 @@ def _path_img(args) -> torch.Tensor:
 
 
 if __name__ == "__main__":
-    isic = ISICDataset(
-        # data_path = Path("/auto/archive/tcga/other_data/ISIC/"),
-        data_path=Path("../mm-lego/data/isic/"),
-        expand=True,
-    )
-    (tab, img), target = isic[0]
-    print(tab.shape, img.shape)
+    # isic = ISICDataset(
+    #     # data_path = Path("/auto/archive/tcga/other_data/ISIC/"),
+    #     data_path=Path("../mm-lego/data/isic/"),
+    #     expand=True,
+    # )
+    # (tab, img), target = isic[0]
+    # print(tab.shape, img.shape)
 
     # Preprocessing (only do once)
-    # preprocess_isic()
+    preprocess_isic()
