@@ -167,6 +167,11 @@ class TCGADataset(MMDataset):
                     low_memory=False,
                 )
 
+                # # dropping duplicate cases
+                # df = df.sort_values(by=["case_id", "slide_id"])
+                # # use single slide
+                # df = df.drop_duplicates(subset=["case_id"], keep="first")
+
             if self.staging:
                 # only when xena data is used
                 if "stage" in df.columns:
