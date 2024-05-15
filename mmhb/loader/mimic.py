@@ -118,7 +118,9 @@ if __name__ == "__main__":
     mimic = MimicDataset(**config.data.mimic.to_dict())
     tensors, target = mimic[0]
     [print(t.shape) for t in tensors]
-    print(mimic.targets.unique())
-    print(mimic.targets.bincount())
+    print(target)
     print(len(mimic))
-    print(mimic.device)
+    # print(mimic.targets.unique())
+    # print(mimic.targets.bincount())
+    # print(len(mimic))
+    # print(mimic.device)

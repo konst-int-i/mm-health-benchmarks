@@ -30,10 +30,12 @@ class ISICDataset(MMDataset):
         self.df = pd.read_csv(
             self.data_path.joinpath("train.csv"), index_col="patient_id"
         )
+        # drop any observations with nan values
+        self.df = self.df.dropna()
         n_positives = self.df["target"].sum()
         positives = self.df[self.df["target"] == 1]
         # sample n_positives negatives
-        negatives = self.df[self.df["target"] == 0].sample(n=2 * n_positives)
+        negatives = self.df[self.df["target"] == 0].sample(n=4 * n_positives)
         self.df = pd.concat([positives, negatives]).sample(frac=1)
 
         self.img_index = self.df["image_name"]
@@ -48,7 +50,9 @@ class ISICDataset(MMDataset):
             "benign_malignant",
         ]
         # one-hot encode
-        self.df = pd.get_dummies(self.df, columns=one_hot_cols, dtype="int")
+        self.df = pd.get_dummies(
+            self.df, columns=one_hot_cols, dtype="int", dummy_na=True
+        )
         self.df = self.df.drop(columns=["image_name", "target"])
 
         self.X_tab = torch.Tensor(self.df.values)
@@ -72,6 +76,10 @@ class ISICDataset(MMDataset):
             tensors.append(tensor)
         if "img" in self.modalities:
             tensors.append(self._get_img(idx))
+
+        if self.concat:
+            tensors = torch.cat([torch.flatten(t) for t in tensors], dim=0).unsqueeze(0)
+            tensors = [tensors]
 
         return tensors, self.targets[idx]
 
@@ -165,13 +173,16 @@ def _path_img(args) -> torch.Tensor:
 
 
 if __name__ == "__main__":
-    # isic = ISICDataset(
-    #     # data_path = Path("/auto/archive/tcga/other_data/ISIC/"),
-    #     data_path=Path("../mm-lego/data/isic/"),
-    #     expand=True,
-    # )
-    # (tab, img), target = isic[0]
-    # print(tab.shape, img.shape)
+    isic = ISICDataset(
+        # data_path = Path("/auto/archive/tcga/other_data/ISIC/"),
+        data_path=Path("../mm-lego/data/isic/"),
+        expand=True,
+    )
+    (tab, img), target = isic[0]
+    print(tab.shape)
+    print(img.shape)
+    print(target)
+    print(len(isic))
 
     # Preprocessing (only do once)
-    preprocess_isic()
+    # preprocess_isic()
