@@ -119,8 +119,8 @@ class TCGADataset(MMDataset):
             else:
                 raise NotImplementedError("Raw WSI loader not implemented")
 
-        if self.concat:
-            tensors = torch.cat([torch.flatten(t) for t in tensors], dim=0)
+        if self.concat:  # for early fusion models
+            tensors = torch.cat([torch.flatten(t) for t in tensors], dim=0).unsqueeze(0)
             tensors = [tensors]
         assert isinstance(tensors, list), "tensors must be a list"
 

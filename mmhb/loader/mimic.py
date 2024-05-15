@@ -95,12 +95,17 @@ class MimicDataset(MMDataset):
         tensors = []
         if "tab" in self.modalities:
             tensor = self.X_s[idx]
-            if self.expand:
+            if self.expand or self.concat:
                 tensor = tensor.unsqueeze(0)
             tensors.append(tensor)
 
         if "ts" in self.modalities:
             tensors.append(self.X_t[idx])
+
+        if self.concat:
+            tensors[1] = tensors[1].unsqueeze(0)
+            tensors = torch.cat(tensors, dim=-1)
+            tensors = [tensors]
 
         return tensors, self.targets[idx]
 
