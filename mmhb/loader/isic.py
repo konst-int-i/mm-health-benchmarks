@@ -35,7 +35,8 @@ class ISICDataset(MMDataset):
         n_positives = self.df["target"].sum()
         positives = self.df[self.df["target"] == 1]
         # sample n_positives negatives
-        negatives = self.df[self.df["target"] == 0].sample(n=4 * n_positives)
+        negatives = self.df[self.df["target"] == 0].sample(n=6 * n_positives)
+        # negatives = self.df[self.df["target"] == 0].sample(n=4 * n_positives)
         self.df = pd.concat([positives, negatives]).sample(frac=1)
 
         self.img_index = self.df["image_name"]
